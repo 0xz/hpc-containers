@@ -1,0 +1,79 @@
+name: Build
+
+# One image per toolkit, built and tested on every pull request, pushed to ghcr from master.
+#  Tags: ghcr.io/0xz/hpc-containers:<flavor> and :<flavor>-<short sha>
+#
+# The device test (GPU-aware MPI on the simulated GPU) does not fail the job yet: whether UCX's
+#  CUDA/ROCm transports work on the simulator is still an open question.
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/0xz/hpc-containers
+
+jobs:
+  build:
+    name: ${{ matrix.flavor }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: [cuda, rocm]
+    steps:
+      # the toolkit base images are several GB each (rocm/dev ~8GB), more than a runner has free
+      #  by default
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          docker image prune -af
+          df -h /
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Build
+        run: ./build.sh ${{ matrix.flavor }}
+
+      - name: Test MPI and HDF5
+        run: |
+          docker run --rm -e TESTS=host ${IMAGE}:${{ matrix.flavor }} \
+            /opt/hpc/test/run.sh ${{ matrix.flavor }}
+
+      - name: Test GPU-aware MPI on the simulated GPU
+        continue-on-error: true
+        run: |
+          docker run --rm -e TESTS=device ${IMAGE}:${{ matrix.flavor }} \
+            /opt/hpc/test/run.sh ${{ matrix.flavor }}
+
+      - name: Log in to ghcr
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        run: |
+          tag=${IMAGE}:${{ matrix.flavor }}
+          docker tag ${tag} ${tag}-${GITHUB_SHA::7}
+          docker push ${tag}
+          docker push ${tag}-${GITHUB_SHA::7}
