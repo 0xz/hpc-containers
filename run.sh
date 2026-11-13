@@ -9,8 +9,9 @@ CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 FLAVOR=${1:-${FLAVOR:-}}
 export MARCH=${MARCH:-x86-64-v3}
-PANTHEONSIM_GIT="https://github.com/pantheongpu/pantheonsim"
-PANTHEONSIM_REF=${PANTHEONSIM_REF:-"1dc4331175956285e3da895444dd0dadccb21b08"}
+# pantheonsim fork: GCC 15 fixes, until they are upstream
+PANTHEONSIM_GIT="https://github.com/PhilipDeegan/pantheonsim"
+PANTHEONSIM_REF=${PANTHEONSIM_REF:-"main"}
 WORK_DIR=/tmp/work
 
 case "${FLAVOR}" in
