@@ -21,10 +21,10 @@ rocm)
     ;;
 esac
 
-IMAGE=${IMAGE:-"ghcr.io/0xz/hpc-containers:${FLAVOR}"}
+IMAGE=${IMAGE:-"ghcr.io/0xz/hpc-containers"} # tagged :<flavor>
 docker build \
     --build-arg FROM_IMAGE="${FROM_IMAGE}" \
     --build-arg FLAVOR="${FLAVOR}" \
     --build-arg VGPU_GPU="${VGPU_GPU}" \
     ${MARCH:+--build-arg MARCH="${MARCH}"} \
-    -t "${IMAGE}" .
+    -t "${IMAGE}:${FLAVOR}" .

@@ -39,6 +39,14 @@ if [[ "${FLAVOR}" == cuda ]]; then
         "libcusolver-dev-$v" "libnpp-dev-$v" "libnvjitlink-dev-$v" "cuda-profiler-api-$v"
 fi
 
+if [[ "${FLAVOR}" == rocm ]]; then
+    # the image does not put /opt/rocm/lib on the loader path, so MPI's rocm components (linked
+    #  -L/opt/rocm/lib, no rpath) cannot load. `vgpu run` still puts the simulator's libraries
+    #  first, LD_LIBRARY_PATH comes before the loader cache
+    echo /opt/rocm/lib >/etc/ld.so.conf.d/rocm.conf
+    ldconfig
+fi
+
 mkdir -p "${WORK_DIR}"
 
 # the simulator: its CUDA libraries are built against this toolkit's headers, without nvcc (rocm)
