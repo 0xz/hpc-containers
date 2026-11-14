@@ -2,10 +2,12 @@
 
 Development images with Open MPI (PMIx, UCX) and parallel HDF5 (MPI-IO, subfiling, Fortran) on a
 GPU toolkit, with [PantheonSim](https://github.com/pantheongpu/pantheonsim) as the GPU: CUDA and
-HIP code builds and runs on a machine with no GPU.
+HIP code builds and runs on a machine with no GPU. The `cpu` image has the same MPI and HDF5 on
+plain Ubuntu, without a GPU toolkit or simulator.
 
 | Image | Base | GPU (`VGPU_GPU`) |
 |---|---|---|
+| `ghcr.io/0xz/hpc-containers:cpu` | `ubuntu:26.04` | none |
 | `ghcr.io/0xz/hpc-containers:cuda` | `nvidia/cuda:13.5.0-devel-ubuntu26.04` | `nvidia/h100` |
 | `ghcr.io/0xz/hpc-containers:rocm` | `rocm/dev-ubuntu-26.04:7.14.1-full` | `amd/mi300x` |
 
@@ -33,8 +35,8 @@ vgpu run mpirun -n 2 ./gpu_program
 ## Build
 
 ```bash
-./build.sh cuda   # or rocm; MARCH=native ./build.sh for a local-only build
-docker run --rm ghcr.io/0xz/hpc-containers:cuda /opt/hpc/test/run.sh cuda
+./build.sh       # cpu, or ./build.sh cuda|rocm; MARCH=native ./build.sh for a local-only build
+docker run --rm ghcr.io/0xz/hpc-containers:cpu /opt/hpc/test/run.sh cpu
 ```
 
 `build.sh` picks the vendor base image (`FROM_IMAGE`) and simulated GPU per flavor, the
@@ -44,17 +46,17 @@ must match the toolkit version; AMD side only for `rocm`), then MPI and HDF5.
 
 | Path | What |
 |---|---|
-| `build.sh` | `[cuda\|rocm]`: `docker build` with the base image and build args for that flavor |
+| `build.sh` | `[cpu\|cuda\|rocm]` (default cpu): `docker build` with the base image and build args for that flavor |
 | `Dockerfile` | copies the repo in, runs `run.sh`, sets the environment |
-| `run.sh` | `<cuda\|rocm>`, in the image: deps, PantheonSim, MPI, HDF5, linkage checks |
+| `run.sh` | `<cpu\|cuda\|rocm>`, in the image: deps, PantheonSim (not cpu), MPI, HDF5, linkage checks |
 | `scripts/build_mpi.sh` | `<host\|cuda\|rocm>`: PMIx → UCX → Open MPI into `/opt/mpi` |
 | `scripts/build_hdf5.sh` | parallel HDF5 with subfiling and Fortran into `/opt/hdf5` |
 | `scripts/check_linkage.sh` | `PREFIX [ALLOWED...]`: fails if anything links MPI-stack libraries from elsewhere |
-| `test/run.sh` | `<cuda\|rocm>`: MPI, parallel HDF5, and GPU-aware MPI on the simulated GPU |
+| `test/run.sh` | `<cpu\|cuda\|rocm>`: MPI, parallel HDF5, and GPU-aware MPI on the simulated GPU (not cpu) |
 
 ## CI
 
-`.github/workflows/build.yml` builds and tests both images on every pull request and pushes them
+`.github/workflows/build.yml` builds and tests the three images on every pull request and pushes them
 from master with the workflow's own token. The GPU-aware MPI test does not fail the job.
 
 ## Updating versions

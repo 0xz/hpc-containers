@@ -1,6 +1,7 @@
 name: Build
 
-# One image per toolkit, built and tested on every pull request, pushed to ghcr from master.
+# One image per toolkit, and cpu (no GPU), built and tested on every pull request, pushed to ghcr
+#  from master.
 #  Tags: ghcr.io/0xz/hpc-containers:<flavor> and :<flavor>-<short sha>
 #
 # The device test (GPU-aware MPI on the simulated GPU) does not fail the job yet: whether UCX's
@@ -34,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flavor: [cuda, rocm]
+        flavor: [cpu, cuda, rocm]
     steps:
       # the toolkit base images are several GB each (rocm/dev ~8GB), more than a runner has free
       #  by default
@@ -57,6 +58,7 @@ jobs:
             /opt/hpc/test/run.sh ${{ matrix.flavor }}
 
       - name: Test GPU-aware MPI on the simulated GPU
+        if: matrix.flavor != 'cpu'
         continue-on-error: true
         run: |
           docker run --rm -e TESTS=device ${IMAGE}:${{ matrix.flavor }} \

@@ -5,6 +5,9 @@ FROM $FROM_IMAGE
 
 ARG FLAVOR
 ARG VGPU_GPU
+# cpu: no simulator, so no toolchain file (empty) and no GPU in the description
+ARG CMAKE_TOOLCHAIN=/opt/pantheonsim/toolchain.cmake
+ARG GPU_DESCRIPTION="PantheonSim as the GPU"
 # portable, not native: the image runs on whatever CPU pulls it
 ARG MARCH=x86-64-v3
 
@@ -19,7 +22,7 @@ RUN chmod +x /opt/hpc/run.sh && MARCH=${MARCH} /opt/hpc/run.sh ${FLAVOR}
 ENV PATH=/opt/pantheonsim/bin:/opt/mpi/bin:/opt/hdf5/bin:${PATH} \
     VGPU_SHIM_DIR=/opt/pantheonsim/shim \
     VGPU_GPU=${VGPU_GPU} \
-    CMAKE_TOOLCHAIN_FILE=/opt/pantheonsim/toolchain.cmake \
+    CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN} \
     MPI_HOME=/opt/mpi \
     HDF5_ROOT=/opt/hdf5 \
     OMPI_ALLOW_RUN_AS_ROOT=1 \
@@ -27,4 +30,4 @@ ENV PATH=/opt/pantheonsim/bin:/opt/mpi/bin:/opt/hdf5/bin:${PATH} \
     PRTE_MCA_rmaps_default_mapping_policy=:oversubscribe
 
 LABEL org.opencontainers.image.source="https://github.com/0xz/hpc-containers" \
-      org.opencontainers.image.description="Open MPI + parallel HDF5 on ${FLAVOR}, PantheonSim as the GPU"
+      org.opencontainers.image.description="Open MPI + parallel HDF5 on ${FLAVOR}, ${GPU_DESCRIPTION}"
