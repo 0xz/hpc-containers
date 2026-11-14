@@ -9,7 +9,7 @@ plain Ubuntu, without a GPU toolkit or simulator.
 |---|---|---|
 | `ghcr.io/0xz/hpc-containers:cpu` | `ubuntu:26.04` | none |
 | `ghcr.io/0xz/hpc-containers:cuda` | `nvidia/cuda:13.5.0-devel-ubuntu26.04` | `nvidia/h100` |
-| `ghcr.io/0xz/hpc-containers:rocm` | `rocm/dev-ubuntu-26.04:7.14.1-full` | `amd/mi300x` |
+| `ghcr.io/0xz/hpc-containers:rocm` | `rocm/dev-ubuntu-24.04:7.2.4` (+ rocThrust, rocPRIM) | `amd/mi300x` |
 
 Each push to master also tags `<target>-<short sha>`.
 
@@ -69,6 +69,8 @@ from master with the workflow's own token. The GPU-aware MPI test does not fail 
 - **UCX** builds with `-Werror` and no switch to turn it off. If a new compiler breaks it, prefer
   a newer UCX, otherwise add a narrow `-Wno-error=<x>`.
 - **CUDA / ROCm**: `FROM_IMAGE` per flavor in `build.sh`. On Ubuntu 26.04, NVIDIA has
-  CUDA 13.x only, and AMD has the `rocm/dev-ubuntu-26.04` images but no apt repository yet.
+  CUDA 13.x only, and AMD has the `rocm/dev-ubuntu-26.04` images but no apt repository yet, and
+  only as `-full` images (8GB, too large for a GitHub runner using the image as a job container):
+  the rocm flavor is on `rocm/dev-ubuntu-24.04`'s base image, its libraries from apt.
 - **PantheonSim**: `PANTHEONSIM_REF` in `run.sh`, a commit on its main branch until a release has
   what is needed.

@@ -46,6 +46,10 @@ if [[ "${FLAVOR}" == rocm ]]; then
     #  first, LD_LIBRARY_PATH comes before the loader cache
     echo /opt/rocm/lib >/etc/ld.so.conf.d/rocm.conf
     ldconfig
+    # the base image has HIP, not its libraries: thrust (and rocPRIM under it) for codes using it,
+    #  headers only
+    apt-get install -y --no-install-recommends rocthrust-dev rocprim-dev
+    test -f /opt/rocm/include/thrust/sort.h
 fi
 
 mkdir -p "${WORK_DIR}"

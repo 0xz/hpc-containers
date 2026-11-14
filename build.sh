@@ -18,7 +18,9 @@ cuda)
     VGPU_GPU="nvidia/h100"
     ;;
 rocm)
-    FROM_IMAGE="docker.io/rocm/dev-ubuntu-26.04:7.14.1-full"
+    # not a -full image (8GB, more than a runner pulling it has free): the base one (1.2GB) and
+    #  rocThrust + rocPRIM from its ROCm apt repository (run.sh). On 24.04: 26.04 has -full only
+    FROM_IMAGE="docker.io/rocm/dev-ubuntu-24.04:7.2.4"
     VGPU_GPU="amd/mi300x"
     ;;
 *)
