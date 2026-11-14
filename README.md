@@ -9,7 +9,8 @@ plain Ubuntu, without a GPU toolkit or simulator.
 |---|---|---|
 | `ghcr.io/0xz/hpc-containers:cpu` | `ubuntu:26.04` | none |
 | `ghcr.io/0xz/hpc-containers:cuda` | `nvidia/cuda:13.5.0-devel-ubuntu26.04` | `nvidia/h100` |
-| `ghcr.io/0xz/hpc-containers:rocm` | `rocm/dev-ubuntu-24.04:7.2.4` (+ rocThrust, rocPRIM) | `amd/mi300x` |
+| `ghcr.io/0xz/hpc-containers:cuda12` | `nvidia/cuda:12.9.2-devel-ubuntu24.04` | `nvidia/h100` |
+| `ghcr.io/0xz/hpc-containers:rocm` | `ubuntu:26.04`, ROCm from `rocm/dev-ubuntu-26.04:7.14.1-full` (trimmed) | `amd/mi300x` |
 
 Each push to master also tags `<target>-<short sha>`.
 
@@ -35,7 +36,7 @@ vgpu run mpirun -n 2 ./gpu_program
 ## Build
 
 ```bash
-./build.sh       # cpu, or ./build.sh cuda|rocm; MARCH=native ./build.sh for a local-only build
+./build.sh       # cpu, or ./build.sh cuda|cuda12|rocm; MARCH=native ./build.sh for a local-only build
 docker run --rm ghcr.io/0xz/hpc-containers:cpu /opt/hpc/test/run.sh cpu
 ```
 
@@ -46,13 +47,13 @@ must match the toolkit version; AMD side only for `rocm`), then MPI and HDF5.
 
 | Path | What |
 |---|---|
-| `build.sh` | `[cpu\|cuda\|rocm]` (default cpu): `docker build` with the base image and build args for that flavor |
+| `build.sh` | `[cpu\|cuda\|cuda12\|rocm]` (default cpu): `docker build` with the base image and build args for that flavor |
 | `Dockerfile` | copies the repo in, runs `run.sh`, sets the environment |
-| `run.sh` | `<cpu\|cuda\|rocm>`, in the image: deps, PantheonSim (not cpu), MPI, HDF5, linkage checks |
+| `run.sh` | `<cpu\|cuda\|cuda12\|rocm>`, in the image: deps, PantheonSim (not cpu), MPI, HDF5, linkage checks |
 | `scripts/build_mpi.sh` | `<host\|cuda\|rocm>`: PMIx → UCX → Open MPI into `/opt/mpi` |
 | `scripts/build_hdf5.sh` | parallel HDF5 with subfiling and Fortran into `/opt/hdf5` |
 | `scripts/check_linkage.sh` | `PREFIX [ALLOWED...]`: fails if anything links MPI-stack libraries from elsewhere |
-| `test/run.sh` | `<cpu\|cuda\|rocm>`: MPI, parallel HDF5, and GPU-aware MPI on the simulated GPU (not cpu) |
+| `test/run.sh` | `<cpu\|cuda\|cuda12\|rocm>`: MPI, parallel HDF5, and GPU-aware MPI on the simulated GPU (not cpu) |
 
 ## CI
 
@@ -68,9 +69,11 @@ from master with the workflow's own token. The GPU-aware MPI test does not fail 
   bundled PMIx/PRRTE.
 - **UCX** builds with `-Werror` and no switch to turn it off. If a new compiler breaks it, prefer
   a newer UCX, otherwise add a narrow `-Wno-error=<x>`.
-- **CUDA / ROCm**: `FROM_IMAGE` per flavor in `build.sh`. On Ubuntu 26.04, NVIDIA has
-  CUDA 13.x only, and AMD has the `rocm/dev-ubuntu-26.04` images but no apt repository yet, and
-  only as `-full` images (8GB, too large for a GitHub runner using the image as a job container):
-  the rocm flavor is on `rocm/dev-ubuntu-24.04`'s base image, its libraries from apt.
+- **CUDA / ROCm**: `FROM_IMAGE` (and `TOOLKIT_IMAGE` for rocm) per flavor in `build.sh`. On
+  Ubuntu 26.04, NVIDIA has CUDA 13.x only, so `cuda12` is CUDA 12 on Ubuntu 24.04 (for compilers
+  without CUDA 13 support). AMD has the `rocm/dev-ubuntu-26.04` images but no apt repository yet,
+  and only as `-full` images (8GB, too large for a GitHub runner pulling the image as a job
+  container): the rocm flavor copies ROCm from it onto plain Ubuntu, less the math and ML
+  libraries (`scripts/trim_rocm.sh`, which logs the sizes).
 - **PantheonSim**: `PANTHEONSIM_REF` in `run.sh`, a commit on its main branch until a release has
   what is needed.
