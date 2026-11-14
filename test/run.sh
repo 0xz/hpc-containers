@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# usage: test/run.sh <cuda|rocm>   (inside the image)
+# usage: test/run.sh <cpu|cuda|rocm>   (inside the image)
 #
 #   host:   MPI ring + allreduce, parallel HDF5 through MPI-IO and subfiling
 #   device: GPU-aware MPI, device pointers straight to MPI_Send/Recv, on the simulated GPU
 #
-# env: TESTS=host|device|all (default all), WORK_DIR (default a temp dir)
+# env: TESTS=host|device|all (default all; cpu: host only), WORK_DIR (default a temp dir)
 set -ex
 CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 FLAVOR=${1:-${FLAVOR:-}}
 TESTS=${TESTS:-all}
+[[ "${FLAVOR}" != cpu ]] || TESTS=host
 MPI=${MPI_HOME:-/opt/mpi}
 HDF5=${HDF5_ROOT:-/opt/hdf5}
 WORK_DIR=${WORK_DIR:-$(mktemp -d)}

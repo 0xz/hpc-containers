@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# usage: run.sh <cuda|rocm>   (run inside the image by the Dockerfile, as root)
+# usage: run.sh <cpu|cuda|rocm>   (run inside the image by the Dockerfile, as root)
 #
-# PantheonSim, then PMIx -> UCX -> Open MPI into /opt/mpi, then parallel HDF5 into /opt/hdf5
+# PantheonSim (not for cpu), then PMIx -> UCX -> Open MPI into /opt/mpi, then parallel HDF5 into
+# /opt/hdf5
 #
 # env: MARCH (default x86-64-v3), PANTHEONSIM_REF, NPROC
 set -ex
@@ -15,12 +16,13 @@ PANTHEONSIM_REF=${PANTHEONSIM_REF:-"main"}
 WORK_DIR=/tmp/work
 
 case "${FLAVOR}" in
-cuda | rocm) ;;
+cpu | cuda | rocm) ;;
 *)
-    echo "unknown flavor '${FLAVOR}', expected cuda or rocm" >&2
+    echo "unknown flavor '${FLAVOR}', expected cpu, cuda or rocm" >&2
     exit 1
     ;;
 esac
+MPI_FLAVOR=${FLAVOR/cpu/host} # build_mpi.sh: Open MPI without GPU support
 
 apt-get update
 apt-get install -y --no-install-recommends \
@@ -51,7 +53,7 @@ mkdir -p "${WORK_DIR}"
 
 # the simulator: its CUDA libraries are built against this toolkit's headers, without nvcc (rocm)
 #  only its AMD side is built
-(
+[[ "${FLAVOR}" == cpu ]] || (
     mkdir -p "${WORK_DIR}/pantheonsim" && cd "${WORK_DIR}/pantheonsim"
     git init -q . && git remote add origin "${PANTHEONSIM_GIT}"
     git fetch -q --depth 1 origin "${PANTHEONSIM_REF}" && git checkout -q FETCH_HEAD
@@ -62,13 +64,13 @@ mkdir -p "${WORK_DIR}"
     echo "${PANTHEONSIM_GIT} ${PANTHEONSIM_REF}" >/opt/pantheonsim/SOURCE
 )
 # CMake links CUDA with the static runtime by default, which cannot reach the simulator
-cat >/opt/pantheonsim/toolchain.cmake <<'EOF'
+[[ "${FLAVOR}" == cpu ]] || cat >/opt/pantheonsim/toolchain.cmake <<'EOF'
 set(CMAKE_CUDA_RUNTIME_LIBRARY Shared CACHE STRING "CUDA runtime library")
 EOF
 
 (
     cd "${WORK_DIR}"
-    INSTALL_DIR=/opt/mpi "${CWD}/scripts/build_mpi.sh" "${FLAVOR}"
+    INSTALL_DIR=/opt/mpi "${CWD}/scripts/build_mpi.sh" "${MPI_FLAVOR}"
     "${CWD}/scripts/check_linkage.sh" /opt/mpi
     MPI=/opt/mpi INSTALL_DIR=/opt/hdf5 "${CWD}/scripts/build_hdf5.sh"
     "${CWD}/scripts/check_linkage.sh" /opt/hdf5 /opt/mpi
