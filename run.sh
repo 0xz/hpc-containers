@@ -50,14 +50,20 @@ if [[ "${FLAVOR}" == rocm ]]; then
         ls -l /opt >&2
         exit 1
     }
-    missing=$(find /opt/rocm/bin/ /opt/rocm/lib/ -maxdepth 1 -type f -executable \
-        -exec ldd {} + 2>/dev/null | grep "not found" | sort -u || true)
-    [[ -z "${missing}" ]] || { echo "ROCm libraries missing: ${missing}" >&2; exit 1; }
     # the image does not put /opt/rocm/lib on the loader path, so MPI's rocm components (linked
     #  -L/opt/rocm/lib, no rpath) cannot load. `vgpu run` still puts the simulator's libraries
     #  first, LD_LIBRARY_PATH comes before the loader cache
     echo /opt/rocm/lib >/etc/ld.so.conf.d/rocm.conf
     ldconfig
+    # what is built and run here links: HIP, HSA, comgr, rocm-smi, the compiler (other tools may
+    #  link the trimmed libraries or a python of their own)
+    needed=(/opt/rocm/lib/libamdhip64.so /opt/rocm/lib/libhsa-runtime64.so
+        /opt/rocm/lib/libamd_comgr.so /opt/rocm/lib/librocm_smi64.so /opt/rocm/llvm/bin/clang)
+    for f in "${needed[@]}"; do
+        [[ -e "${f}" ]] || { echo "ROCm: no ${f}" >&2; exit 1; }
+    done
+    missing=$(ldd "${needed[@]}" | grep "not found" | sort -u || true)
+    [[ -z "${missing}" ]] || { echo "ROCm libraries missing: ${missing}" >&2; exit 1; }
 fi
 
 mkdir -p "${WORK_DIR}"
