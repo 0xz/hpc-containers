@@ -25,7 +25,9 @@ du -sh "${OUT}"
 # libraries (and their data: kernels, databases) no code built here uses
 LIBS='MIOpen|miopen|rocblas|hipblas|hipblaslt|hipsparselt|rocsolver|hipsolver|rocfft|hipfft'
 LIBS+='|rocsparse|hipsparse|rccl|rocrand|hiprand|rocalution|migraphx|rocwmma|hiptensor|rocroller'
-LIBS+='|composable_kernel|ck_|mivisionx|rpp|rocdecode|rocjpeg|roctx|rocprofiler|roctracer|omni'
+LIBS+='|composable_kernel|ck_|mivisionx|rpp|rocdecode|rocjpeg|roctx|roctracer|omni'
+# rocprofiler-register stays: HIP and HSA link it
+LIBS+='|rocprofiler-sdk|rocprofiler-compute|rocprofiler-systems'
 find "${OUT}" \( -type f -o -type l \) -regextype posix-extended \
     -regex ".*/lib(${LIBS})[^/]*\.(so[.0-9]*|a)$" -delete
 find "${OUT}" -depth -type d -regextype posix-extended \
