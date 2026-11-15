@@ -15,12 +15,13 @@ PANTHEONSIM_REF=${PANTHEONSIM_REF:-"main"}
 WORK_DIR=/tmp/work
 
 case "${FLAVOR}" in
-cpu | cuda | rocm) ;;
+cpu | cuda | cuda12 | rocm) ;;
 *)
-    echo "unknown flavor '${FLAVOR}', expected cpu, cuda or rocm" >&2
+    echo "unknown flavor '${FLAVOR}', expected cpu, cuda, cuda12 or rocm" >&2
     exit 1
     ;;
 esac
+FLAVOR=${FLAVOR/cuda12/cuda} # CUDA 12 on Ubuntu 24.04: the same steps as cuda's
 MPI_FLAVOR=${FLAVOR/cpu/host} # build_mpi.sh: Open MPI without GPU support
 
 apt-get update
@@ -41,11 +42,28 @@ if [[ "${FLAVOR}" == cuda ]]; then
 fi
 
 if [[ "${FLAVOR}" == rocm ]]; then
+    # ROCm was copied from its -full image onto plain Ubuntu: the system libraries it links
+    apt-get install -y --no-install-recommends libnuma1 libelf1t64 libdrm2 libdrm-amdgpu1 \
+        libzstd1 libtinfo6 libncurses6 libxml2-16 python3-yaml
+    [[ -f /opt/rocm/include/hip/hip_runtime.h ]] || {
+        echo "ROCm not found under /opt/rocm" >&2
+        ls -l /opt >&2
+        exit 1
+    }
     # the image does not put /opt/rocm/lib on the loader path, so MPI's rocm components (linked
     #  -L/opt/rocm/lib, no rpath) cannot load. `vgpu run` still puts the simulator's libraries
     #  first, LD_LIBRARY_PATH comes before the loader cache
     echo /opt/rocm/lib >/etc/ld.so.conf.d/rocm.conf
     ldconfig
+    # what is built and run here links: HIP, HSA, comgr, rocm-smi, the compiler (other tools may
+    #  link the trimmed libraries or a python of their own)
+    needed=(/opt/rocm/lib/libamdhip64.so /opt/rocm/lib/libhsa-runtime64.so
+        /opt/rocm/lib/libamd_comgr.so /opt/rocm/lib/librocm_smi64.so /opt/rocm/llvm/bin/clang)
+    for f in "${needed[@]}"; do
+        [[ -e "${f}" ]] || { echo "ROCm: no ${f}" >&2; exit 1; }
+    done
+    missing=$(ldd "${needed[@]}" | grep "not found" | sort -u || true)
+    [[ -z "${missing}" ]] || { echo "ROCm libraries missing: ${missing}" >&2; exit 1; }
 fi
 
 mkdir -p "${WORK_DIR}"

@@ -1,7 +1,16 @@
 # see build.sh for FROM_IMAGE and the other build args per flavor, run.sh for what is built
 
 ARG FROM_IMAGE
-FROM $FROM_IMAGE
+# rocm: the -full image ROCm is taken from, trimmed (scripts/trim_rocm.sh); others: their base,
+#  which has no ROCm, so nothing is copied
+ARG TOOLKIT_IMAGE=${FROM_IMAGE}
+
+FROM ${TOOLKIT_IMAGE} AS toolkit
+COPY scripts/trim_rocm.sh /trim_rocm.sh
+RUN bash /trim_rocm.sh /toolkit
+
+FROM ${FROM_IMAGE}
+COPY --from=toolkit /toolkit/ /opt/
 
 ARG FLAVOR
 ARG VGPU_GPU
@@ -19,7 +28,7 @@ RUN chmod +x /opt/hpc/run.sh && MARCH=${MARCH} /opt/hpc/run.sh ${FLAVOR}
 
 # sim bin/ first: its nvcc is the real one plus -cudart shared, its nvidia-smi / rocm-smi the
 #  simulated GPU. The shim is not on LD_LIBRARY_PATH: `vgpu run <program>` puts it there.
-ENV PATH=/opt/pantheonsim/bin:/opt/mpi/bin:/opt/hdf5/bin:${PATH} \
+ENV PATH=/opt/pantheonsim/bin:/opt/mpi/bin:/opt/hdf5/bin:/opt/rocm/bin:${PATH} \
     VGPU_SHIM_DIR=/opt/pantheonsim/shim \
     VGPU_GPU=${VGPU_GPU} \
     CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN} \

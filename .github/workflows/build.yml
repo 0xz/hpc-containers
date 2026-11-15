@@ -35,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flavor: [cpu, cuda, rocm]
+        flavor: [cpu, cuda, cuda12, rocm]
     steps:
       # the toolkit base images are several GB each (rocm/dev ~8GB), more than a runner has free
       #  by default

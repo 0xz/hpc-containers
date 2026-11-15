@@ -9,6 +9,7 @@ set -ex
 CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 FLAVOR=${1:-${FLAVOR:-}}
+FLAVOR=${FLAVOR/cuda12/cuda} # the same tests as cuda's
 TESTS=${TESTS:-all}
 [[ "${FLAVOR}" != cpu ]] || TESTS=host
 MPI=${MPI_HOME:-/opt/mpi}
