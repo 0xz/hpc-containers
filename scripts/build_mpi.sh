@@ -73,13 +73,15 @@ rm -rf "${BUILD_DIR}" && mkdir -p "${BUILD_DIR}"/{pmix,ucx,ompi}
     make -j "$NPROC" && make install
 ) 1> >(tee "${LOG}.pmix.out") 2> >(tee "${LOG}.pmix.err" >&2)
 
+# --enable-mt: thread safe workers, for MPI_THREAD_MULTIPLE (else Open MPI does not select UCX
+#  then, e.g. for HDF5's subfiling); lower thread levels keep UCX's single threaded workers
 # ucx hardcodes -Werror; gcc 13 emits a false positive maybe-uninitialized in ucs/arch/bitops.h
 # at -O3, our flags come after ucx's own so this downgrades it to a warning
 UCX_FLAGS="${FLAGS} -Wno-error=maybe-uninitialized"
 (
     cd "${BUILD_DIR}/ucx"
     "${UCX_SRC}/configure" CFLAGS="${UCX_FLAGS}" CXXFLAGS="${UCX_FLAGS}" --prefix="${INSTALL_DIR}" \
-        --without-knem "${UCX_EXTRA[@]}"
+        --without-knem --enable-mt "${UCX_EXTRA[@]}"
     make -j "$NPROC" && make install
 ) 1> >(tee "${LOG}.ucx.out") 2> >(tee "${LOG}.ucx.err" >&2)
 
