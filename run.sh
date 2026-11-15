@@ -45,7 +45,12 @@ if [[ "${FLAVOR}" == rocm ]]; then
     # ROCm was copied from its -full image onto plain Ubuntu: the system libraries it links
     apt-get install -y --no-install-recommends libnuma1 libelf1t64 libdrm2 libdrm-amdgpu1 \
         libzstd1 libtinfo6 libncurses6 libxml2-16 python3-yaml
-    missing=$(find /opt/rocm/bin /opt/rocm/lib -maxdepth 1 -type f -executable \
+    [[ -f /opt/rocm/include/hip/hip_runtime.h ]] || {
+        echo "ROCm not found under /opt/rocm" >&2
+        ls -l /opt >&2
+        exit 1
+    }
+    missing=$(find /opt/rocm/bin/ /opt/rocm/lib/ -maxdepth 1 -type f -executable \
         -exec ldd {} + 2>/dev/null | grep "not found" | sort -u || true)
     [[ -z "${missing}" ]] || { echo "ROCm libraries missing: ${missing}" >&2; exit 1; }
     # the image does not put /opt/rocm/lib on the loader path, so MPI's rocm components (linked

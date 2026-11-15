@@ -11,6 +11,13 @@ OUT=${1:?out dir}
 mkdir -p "${OUT}"
 ls -d /opt/rocm* >/dev/null 2>&1 || exit 0
 cp -a /opt/rocm* "${OUT}/"
+# /opt/rocm is /etc/alternatives/rocm -> /opt/rocm-X.Y.Z: the absolute link dangles on plain
+#  Ubuntu, relink it to the copied tree
+for l in "${OUT}"/rocm*; do
+    [[ -L "${l}" ]] || continue
+    ln -sfn "$(basename "$(readlink -f "/opt/$(basename "${l}")")")" "${l}"
+done
+ls -l "${OUT}"
 du -sh "${OUT}"
 
 # libraries (and their data: kernels, databases) no code built here uses
